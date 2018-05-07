@@ -51,5 +51,6 @@ $_LANG['Silent - don\'t show errors on display'] = 'Cichy - nie pokazje błędó
 $_LANG['Display - show errors on display'] = 'Wyświetlaj - nie pokazje błędów na ekranie';
 $_LANG['Set error handler'] = 'Ustaw wyświetlanie błędów na wyświetlaczu';
 $_LANG['Get last error'] = 'Pobierz ostatni błąd';
+$_LANG['Click to change fiscalization'] = 'Kliknij by zmiemić fiskalizację';
 
 

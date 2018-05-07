@@ -744,6 +744,8 @@ class NovitusHD
 
 				if ($this->isWriteSuccess()) {
 					$this->db->Execute("INSERT INTO novitus_fiscalized_invoices (doc_id, fiscalized) VALUES (?, ?)", [$invoice['id'], true]);
+					// $cdate = new DateTime();
+					// $this->db->Execute("UPDATE documents SET cdate = ? WHERE id = ?", [$cdate->getTimestamp(), $invoice['id']]);
 					return ['status' => 'OK', 'data' => $invoice];
 				} else {
 					syslog(LOG_DEBUG, 'NOVITUS: '. trans('Sent data included logical errors. Check data'));
@@ -879,6 +881,16 @@ class NovitusHD
 		} else {
 			return ['status' => 'NOK', 'error' => trans('Error reading data')];
 		}
+	}
+
+	public function setFiscalized($id){
+
+		return $res = $this->db->Execute("INSERT INTO novitus_fiscalized_invoices (doc_id, fiscalized) VALUES (?, ?)", [$id, true]) ? true : false;
+	}
+
+	public function setNotFiscalized($id){
+
+		 return $res = $this->db->Execute("DELETE FROM novitus_fiscalized_invoices WHERE doc_id = ?", [$id]);
 	}
 }
 

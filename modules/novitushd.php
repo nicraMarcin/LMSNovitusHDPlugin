@@ -33,7 +33,7 @@ $type = htmlspecialchars($_GET['type']);
 
 global $LMS;
 $LMS->InitXajax();
-$LMS->RegisterXajaxFunction(['getInvoices', 'printInvoice','printDailyReport','printPeriodReport','setTime','getConfig','setConfig','getLastTransaction','getCurrentTransaction','closeTransaction','setErrorHandler','getLastError','getHeader']);
+$LMS->RegisterXajaxFunction(['getInvoices', 'printInvoice', 'printDailyReport', 'printPeriodReport', 'setTime', 'getConfig', 'setConfig', 'getLastTransaction', 'getCurrentTransaction', 'closeTransaction', 'setErrorHandler', 'getLastError', 'getHeader', 'toggleFiscalize']);
 
 
 switch ($type) {
@@ -53,7 +53,7 @@ switch ($type) {
 		$SMARTY->assign('taxes', $taxes);
 		$SMARTY->assign('consttaxes', $consttaxes);
 		$SMARTY->assign('cashinfo', $cashInfo);
-				$SMARTY->assign('config', $config['children'][0]['children']);
+		$SMARTY->assign('config', $config['children'][0]['children']);
 
 		$SMARTY->display('info.tpl');
 
@@ -63,9 +63,9 @@ switch ($type) {
 
 
 		$SMARTY->assign('customergroups', $LMS->CustomergroupGetAll());
-		$SMARTY->assign('numberplans', $LMS->GetNumberPlans(array(
-			'doctype' => array(DOC_INVOICE, DOC_CNOTE),
-		)));
+		$SMARTY->assign('numberplans', $LMS->GetNumberPlans([
+			'doctype' => [DOC_INVOICE, DOC_CNOTE],
+		]));
 		$SMARTY->assign('divisions', $LMS->GetDivisions());
 		$SMARTY->assign('xajax', $LMS->RunXajax());
 		$SMARTY->display('invoice.tpl');
@@ -94,52 +94,53 @@ switch ($type) {
  * @param bool $fullData
  * @return xajaxResponse
  */
-function getInvoices($form, $fullData = false){
+function getInvoices($form, $fullData = false)
+{
 	$obj = new xajaxResponse();
 
 	$formArray = json_decode($form, true);
 	$data = [];
-	foreach ($formArray as $item){ // item['name] $item['value']
+	foreach ($formArray as $item) { // item['name] $item['value']
 		$data[$item['name']] = $item['value'];
 	}
 
-		$from = $data['invoicefrom'];
-		$to = $data['invoiceto'];
+	$from = $data['invoicefrom'];
+	$to = $data['invoiceto'];
 
-		// date format 'yyyy/mm/dd'
-		if ($to) {
-			list($year, $month, $day) = explode('/', $to);
-			$date['to'] = mktime(23, 59, 59, $month, $day, $year);
-		} else {
-			$to = date('Y/m/d', time());
-			$date['to'] = mktime(23, 59, 59); //koniec dnia dzisiejszego
-		}
+	// date format 'yyyy/mm/dd'
+	if ($to) {
+		list($year, $month, $day) = explode('/', $to);
+		$date['to'] = mktime(23, 59, 59, $month, $day, $year);
+	} else {
+		$to = date('Y/m/d', time());
+		$date['to'] = mktime(23, 59, 59); //koniec dnia dzisiejszego
+	}
 
-		if ($from) {
-			list($year, $month, $day) = explode('/', $from);
-			$date['from'] = mktime(0, 0, 0, $month, $day, $year);
-		} else {
-			$from = date('Y/m/d', time());
-			$date['from'] = mktime(0, 0, 0); //początek dnia dzisiejszego
-		}
+	if ($from) {
+		list($year, $month, $day) = explode('/', $from);
+		$date['from'] = mktime(0, 0, 0, $month, $day, $year);
+	} else {
+		$from = date('Y/m/d', time());
+		$date['from'] = mktime(0, 0, 0); //początek dnia dzisiejszego
+	}
 
-		$invoices = LMSHelper::getInvoices($date['from'], $date['to'],
-			htmlspecialchars($data['customer_type']),
-			(int)$data['customer'],
-			(int)$data['division'],
-			(int)$data['group'],
-			(isset($data['groupexclude']) ? true : false),
-			(isset($data['showonlynotfiscalized']) ? true : false)
-		);
+	$invoices = LMSHelper::getInvoices($date['from'], $date['to'],
+		htmlspecialchars($data['customer_type']),
+		(int)$data['customer'],
+		(int)$data['division'],
+		(int)$data['group'],
+		(isset($data['groupexclude']) ? true : false),
+		(isset($data['showonlynotfiscalized']) ? true : false)
+	);
 
-	if ($invoices){
+	if ($invoices) {
 
-		if ($fullData){
+		if ($fullData) {
 			global $LMS;
 
 			$invoicesTable = '';
 			$index = 1;
-			foreach ($invoices as $id){
+			foreach ($invoices as $id) {
 				$tmp = $LMS->GetInvoiceContent($id);
 				$invNo = $tmp['template'];
 				$invNo = str_replace('%N', $tmp['number'], $invNo);
@@ -147,11 +148,11 @@ function getInvoices($form, $fullData = false){
 				$invNo = str_replace('%Y', $tmp['year'], $invNo);
 				$tmp['fiscalized'] = LMSHelper::isInvoiceFiscalized($tmp['id']) ? '1' : '0';
 
-				$invoicesTable .= '<tr class="highlight '.(($index % 2 === 0) ? 'lucid' : 'light') .' '.($tmp['fiscalized'] ? 'blend' : '').'"><td>'.$invNo.'</td><td><strong>&lang;'.$tmp['customerid'].'&rang;</strong> '.$tmp['name'].'</td><td>'.$tmp['total'].'</td><td'.($tmp['fiscalized'] ? ' class="green">TAK' : ' class="red">NIE').'</td></tr>';
+				$invoicesTable .= '<tr id="invoice-'.$id.'" class="highlight ' . (($index % 2 === 0) ? 'lucid' : 'light') . ' ' . ($tmp['fiscalized'] ? 'blend' : '') . '"><td>' . $invNo . '</td><td><strong>&lang;' . $tmp['customerid'] . '&rang;</strong> ' . $tmp['name'] . '</td><td>' . $tmp['total'] . '</td><td title="'.trans('Click to change fiscalization').'" onclick="toggleFiscal(' . $id . ', ' . $tmp['fiscalized'] . ');" ' . ($tmp['fiscalized'] ? ' class="green">TAK' : ' class="red">NIE') . '</td></tr>';
 				unset($tmp);
 				$index++;
 			}
-			$invoicesTable = '<table class="lmsbox"><thead><tr><th>'.trans('Number').'</th><th>'.trans('Customer').'</th><th>'.trans('Value').'</th><th>'.trans('Fiscalized').'</th></tr></thead>'.$invoicesTable.'</table>';
+			$invoicesTable = '<table class="lmsbox"><thead><tr><th>' . trans('Number') . '</th><th>' . trans('Customer') . '</th><th>' . trans('Value') . '</th><th>' . trans('Fiscalized') . '</th></tr></thead>' . $invoicesTable . '</table>';
 
 			$obj->assign('novitusLog', 'innerHTML', $invoicesTable);
 		} else {
@@ -159,31 +160,32 @@ function getInvoices($form, $fullData = false){
 		}
 
 	} else {
-		$obj->assign('novitusLog', 'innerHTML', '<h4>'.trans('No not fiscalized invoices found').'</h4>');
+		$obj->assign('novitusLog', 'innerHTML', '<h4>' . trans('No not fiscalized invoices found') . '</h4>');
 	}
 
 	return $obj;
 }
 
-function printInvoice($id){
+function printInvoice($id)
+{
 	$obj = new xajaxResponse();
 	$p = new NovitusHD();
 
 	$res = $p->printInvoice($id);
 
-	if ($res['status'] === 'NOK'){
+	if ($res['status'] === 'NOK') {
 
-		if ($res['reason'] === 2){
-			$obj->append('novitusLog', 'innerHTML', $res['error'].'<br>');
+		if ($res['reason'] === 2) {
+			$obj->append('novitusLog', 'innerHTML', $res['error'] . '<br>');
 			$obj->call('printInvoice');
 
 		} else {
-			$obj->append('novitusLog', 'innerHTML', '<h3 class="errorList">'.$res['error'].'</h3>');
+			$obj->append('novitusLog', 'innerHTML', '<h3 class="errorList">' . $res['error'] . '</h3>');
 			$obj->call('stopPrinting');
 		}
 
 	} else {
-		$obj->append('novitusLog', 'innerHTML', 'Faktura: <strong>'.$res['data']['humanNo'].' - '.$res['data']['name']. '</strong> wydrukowana<br>');
+		$obj->append('novitusLog', 'innerHTML', 'Faktura: <strong>' . $res['data']['humanNo'] . ' - ' . $res['data']['name'] . '</strong> wydrukowana<br>');
 		$obj->call('printInvoice');
 	}
 
@@ -192,7 +194,8 @@ function printInvoice($id){
 	return $obj;
 }
 
-function printDailyReport($date = null){
+function printDailyReport($date = null)
+{
 	$obj = new xajaxResponse();
 	$p = new NovitusHD();
 
@@ -204,14 +207,15 @@ function printDailyReport($date = null){
 	} else {
 		$lastError = $p->getLastError();
 		$obj->assign('novitusActionsDailyReport', 'innerHTML', trans('Error sending data'));
-		$obj->assign('novitusActionsDailyReport', 'innerHTML', '<br>'.trans($lastError['attr']['desc']));
+		$obj->assign('novitusActionsDailyReport', 'innerHTML', '<br>' . trans($lastError['attr']['desc']));
 	}
 
 	unset($p);
 	return $obj;
 }
 
-function printPeriodReport($datefrom, $dateto, $kind){
+function printPeriodReport($datefrom, $dateto, $kind)
+{
 	$obj = new xajaxResponse();
 	$p = new NovitusHD();
 	$res = $p->printPeriodReport($datefrom, $dateto, $kind);
@@ -220,14 +224,15 @@ function printPeriodReport($datefrom, $dateto, $kind){
 
 		$obj->assign('novitusActionsMonthlyReport', 'innerHTML', trans('Report task has been sent to printer'));
 	} else {
-		$obj->assign('novitusActionsMonthlyReport', 'innerHTML', trans('Error sending data').': '.trans($res['error']));
+		$obj->assign('novitusActionsMonthlyReport', 'innerHTML', trans('Error sending data') . ': ' . trans($res['error']));
 	}
 
 	unset($p);
 	return $obj;
 }
 
-function setTime($date){
+function setTime($date)
+{
 	$obj = new xajaxResponse();
 	$p = new NovitusHD();
 	$res = $p->setDateTime($date);
@@ -236,14 +241,15 @@ function setTime($date){
 
 		$obj->assign('novitusConfigSetTime', 'innerHTML', trans('Set time has been sent to printer'));
 	} else {
-		$obj->assign('novitusConfigSetTime', 'innerHTML', trans('Error sending data').': '.trans($res['error']));
+		$obj->assign('novitusConfigSetTime', 'innerHTML', trans('Error sending data') . ': ' . trans($res['error']));
 	}
 
 	unset($p);
 	return $obj;
 }
 
-function getLastTransaction(){
+function getLastTransaction()
+{
 	$obj = new xajaxResponse();
 	$p = new NovitusHD();
 	$res = $p->getLastTransactionState();
@@ -251,19 +257,20 @@ function getLastTransaction(){
 	if ($res) {
 		$dataTable = '';
 
-		$dataTable .= '<div><p>'.trans('Type').': <strong>'.$res['attr']['type'].'</strong>, '.trans('Transaction state').': <strong>'.$res['attr']['state'].'</strong>, Data: <strong>'.$res['attr']['date'].'</strong>, ' .trans('Print number').': <strong>'.$res['attr']['printoutno'].'</strong></p></div>';
+		$dataTable .= '<div><p>' . trans('Type') . ': <strong>' . $res['attr']['type'] . '</strong>, ' . trans('Transaction state') . ': <strong>' . $res['attr']['state'] . '</strong>, Data: <strong>' . $res['attr']['date'] . '</strong>, ' . trans('Print number') . ': <strong>' . $res['attr']['printoutno'] . '</strong></p></div>';
 		$dataTable .= '';
 
 		$obj->assign('novitusActionsGetLastTransaction', 'innerHTML', $dataTable);
 	} else {
-		$obj->assign('novitusActionsGetLastTransaction', 'innerHTML', trans('Error sending data').': '.trans($res['error']));
+		$obj->assign('novitusActionsGetLastTransaction', 'innerHTML', trans('Error sending data') . ': ' . trans($res['error']));
 	}
 
 	unset($p);
 	return $obj;
 }
 
-function getCurrentTransaction(){
+function getCurrentTransaction()
+{
 	$obj = new xajaxResponse();
 	$p = new NovitusHD();
 	$res = $p->getCurrentTransactionState();
@@ -271,22 +278,23 @@ function getCurrentTransaction(){
 	if ($res) {
 
 		$dataTable = '';
-		if ($res['attr']['type'] === 'none'){
-			$dataTable .= '<p>'.trans('Printer has no open transaction').'</p>';
+		if ($res['attr']['type'] === 'none') {
+			$dataTable .= '<p>' . trans('Printer has no open transaction') . '</p>';
 		} else {
-			$dataTable .= '<p>'.trans('Type').': <strong>'.$res['attr']['type'].'</strong>, '.trans('Gross total').': <strong>'.$res['attr']['grosstotal'].'</strong></p><input type="button" value="'.trans('Clear transaction').'" onclick="xajax_closeTransaction()">';
+			$dataTable .= '<p>' . trans('Type') . ': <strong>' . $res['attr']['type'] . '</strong>, ' . trans('Gross total') . ': <strong>' . $res['attr']['grosstotal'] . '</strong></p><input type="button" value="' . trans('Clear transaction') . '" onclick="xajax_closeTransaction()">';
 		}
 
 		$obj->assign('novitusActionsCurrentTransaction', 'innerHTML', $dataTable);
 	} else {
-		$obj->assign('novitusActionsCurrentTransaction', 'innerHTML', trans('Error sending data').': '.trans($res['error']));
+		$obj->assign('novitusActionsCurrentTransaction', 'innerHTML', trans('Error sending data') . ': ' . trans($res['error']));
 	}
 
 	unset($p);
 	return $obj;
 }
 
-function getLastError(){
+function getLastError()
+{
 	$obj = new xajaxResponse();
 	$p = new NovitusHD();
 	$res = $p->getLastError();
@@ -303,7 +311,8 @@ function getLastError(){
 	return $obj;
 }
 
-function closeTransaction(){
+function closeTransaction()
+{
 	$obj = new xajaxResponse();
 	$p = new NovitusHD();
 	$res = $p->cancelInvoice();
@@ -312,7 +321,7 @@ function closeTransaction(){
 
 		$obj->assign('novitusActionsCurrentTransaction', 'innerHTML', trans('Transaction cleared'));
 	} else {
-		$obj->assign('novitusActionsCurrentTransaction', 'innerHTML', trans('Error sending data').': '.trans($res['error']));
+		$obj->assign('novitusActionsCurrentTransaction', 'innerHTML', trans('Error sending data') . ': ' . trans($res['error']));
 	}
 
 	unset($p);
@@ -342,7 +351,8 @@ function setConfig($config)
 	return $obj;
 }
 
-function getConfig($opt){
+function getConfig($opt)
+{
 	$obj = new xajaxResponse();
 	$p = new NovitusHD();
 
@@ -359,7 +369,8 @@ function getConfig($opt){
 	return $obj;
 }
 
-function setErrorHandler($type){
+function setErrorHandler($type)
+{
 	$obj = new xajaxResponse();
 	$p = new NovitusHD();
 
@@ -370,6 +381,30 @@ function setErrorHandler($type){
 		$obj->assign('novitusConfigErrorHandler', 'innerHTML', trans('Option set'));
 	} else {
 		$obj->assign('novitusConfigErrorHandler', 'innerHTML', trans('Error sending data') . ': ' . trans($res['error']));
+	}
+
+	unset($p);
+	return $obj;
+}
+
+function toggleFiscalize($doc_id, $fiscalized)
+{
+	$obj = new xajaxResponse();
+	$p = new NovitusHD();
+
+	if (!$fiscalized) {
+		if ($p->setFiscalized($doc_id)){
+			$obj->remove('invoice-'.$doc_id);
+		} else {
+			$obj->alert('Something went wrong');
+		};
+
+	} else {
+		if ($p->setNotFiscalized($doc_id)){
+			$obj->remove('invoice-'.$doc_id);
+		} else {
+			$obj->alert('Something went wrong');
+		};
 	}
 
 	unset($p);

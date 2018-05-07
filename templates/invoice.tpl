@@ -76,6 +76,11 @@
             // document.fiscalizeinvoices.submit();
         }
 
+        function toggleFiscal(inv, fiscal) {
+            xajax_toggleFiscalize(inv, fiscal);
+
+        }
+
         //-->
     </SCRIPT>
 
